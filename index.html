@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chromatic CTA Lab</title>
+  <meta name="description" content="A colorful CTA playground for testing banner color auto-generation." />
+  <style>
+    :root{
+      --bg0:#0b0f1a;
+      --card: rgba(255,255,255,.08);
+      --card2: rgba(255,255,255,.12);
+      --stroke: rgba(255,255,255,.14);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --shadow: 0 30px 70px rgba(0,0,0,.45);
+      --radius: 22px;
+
+      /* banner vars (updated by JS) */
+      --c1:#ff4d6d;
+      --c2:#6c5ce7;
+      --c3:#00d2ff;
+      --bannerText: rgba(255,255,255,.95);
+      --bannerSub: rgba(255,255,255,.78);
+
+      --grad: radial-gradient(1200px 600px at 15% 15%, color-mix(in oklab, var(--c1) 80%, transparent), transparent 60%),
+              radial-gradient(1000px 600px at 85% 25%, color-mix(in oklab, var(--c2) 75%, transparent), transparent 60%),
+              radial-gradient(900px 700px at 60% 90%, color-mix(in oklab, var(--c3) 70%, transparent), transparent 60%),
+              linear-gradient(120deg, var(--c1), var(--c2), var(--c3));
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 900px at 20% -10%, rgba(255,255,255,.08), transparent 60%),
+                  radial-gradient(1200px 900px at 90% 20%, rgba(255,255,255,.08), transparent 60%),
+                  linear-gradient(180deg, #070A12 0%, #070A12 35%, #050611 100%);
+      color: var(--text);
+      overflow-x:hidden;
+    }
+
+    /* Subtle animated grain */
+    .grain{
+      position:fixed; inset:0;
+      pointer-events:none;
+      opacity:.06;
+      mix-blend-mode: overlay;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+      transform: scale(1.2);
+      animation: grain 6s steps(2) infinite;
+    }
+    @keyframes grain{
+      0%{transform:translate(0,0) scale(1.2)}
+      25%{transform:translate(-2%,1%) scale(1.2)}
+      50%{transform:translate(1%,-2%) scale(1.2)}
+      75%{transform:translate(2%,2%) scale(1.2)}
+      100%{transform:translate(0,0) scale(1.2)}
+    }
+
+    .wrap{max-width:1120px; margin:0 auto; padding:28px 18px 80px}
+    header{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:14px; margin-bottom:18px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px; user-select:none;
+    }
+    .logo{
+      width:38px; height:38px; border-radius:12px;
+      background: linear-gradient(135deg, var(--c1), var(--c2), var(--c3));
+      box-shadow: 0 14px 30px rgba(0,0,0,.45);
+      position:relative;
+      overflow:hidden;
+    }
+    .logo::after{
+      content:"";
+      position:absolute; inset:-60%;
+      background: conic-gradient(from 180deg, rgba(255,255,255,.0), rgba(255,255,255,.35), rgba(255,255,255,.0));
+      animation: spin 2.8s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .brand h1{
+      margin:0;
+      font-size:14px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.82);
+    }
+
+    .topControls{
+      display:flex; flex-wrap:wrap; gap:10px;
+      justify-content:flex-end;
+    }
+
+    .btn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.90);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:600;
+      letter-spacing:.02em;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      display:inline-flex; align-items:center; gap:8px;
+      backdrop-filter: blur(10px);
+    }
+    .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22)}
+    .btn:active{transform: translateY(0px) scale(.98)}
+    .btn.primary{
+      border-color: transparent;
+      background: linear-gradient(135deg, color-mix(in oklab, var(--c1) 85%, white 0%), color-mix(in oklab, var(--c2) 85%, white 0%), color-mix(in oklab, var(--c3) 85%, white 0%));
+      color: rgba(0,0,0,.90);
+      box-shadow: 0 18px 40px rgba(0,0,0,.35);
+    }
+
+    .pill{
+      border:1px solid var(--stroke);
+      border-radius:999px;
+      padding:9px 12px;
+      display:flex; gap:10px; align-items:center;
+      background: rgba(255,255,255,.05);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 40px rgba(0,0,0,.18);
+    }
+    select, input[type="range"]{
+      accent-color: var(--c2);
+    }
+    select{
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.25);
+      color: rgba(255,255,255,.92);
+      padding:8px 10px;
+      border-radius:12px;
+      outline:none;
+    }
+
+    /* HERO */
+    .hero{
+      position:relative;
+      border-radius: 28px;
+      padding: 30px 24px;
+      min-height: 360px;
+      overflow:hidden;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.14);
+      background:
+        radial-gradient(900px 600px at 20% 10%, rgba(255,255,255,.18), transparent 60%),
+        var(--grad);
+      transform: translateZ(0);
+    }
+
+    .heroGrid{
+      position:relative;
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap:18px;
+      align-items:stretch;
+    }
+    @media (max-width: 900px){
+      .heroGrid{grid-template-columns:1fr}
+      .hero{min-height: 520px}
+    }
+
+    .heroText{
+      padding: 8px 8px 8px 8px;
+    }
+
+    .kicker{
+      display:inline-flex;
+      gap:10px; align-items:center;
+      padding:8px 12px;
+      border-radius:999px;
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.16);
+      color: var(--bannerSub);
+      letter-spacing:.10em;
+      text-transform:uppercase;
+      font-size:12px;
+      backdrop-filter: blur(10px);
+    }
+    .dot{
+      width:9px;height:9px;border-radius:99px;
+      background: rgba(255,255,255,.9);
+      box-shadow: 0 0 0 6px rgba(255,255,255,.12);
+    }
+
+    .hero h2{
+      margin: 14px 0 10px;
+      font-size: clamp(34px, 4vw, 54px);
+      line-height: 1.0;
+      letter-spacing:-.02em;
+      color: var(--bannerText);
+      text-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .hero p{
+      margin:0 0 18px;
+      font-size: 16px;
+      line-height: 1.55;
+      color: var(--bannerSub);
+      max-width: 52ch;
+    }
+
+    .ctaRow{
+      display:flex; flex-wrap:wrap; gap:12px; align-items:center;
+      margin-top: 16px;
+    }
+    .ctaBig{
+      border:none;
+      border-radius: 18px;
+      padding: 12px 16px;
+      cursor:pointer;
+      font-weight: 800;
+      letter-spacing:.01em;
+      transition: transform .12s ease;
+      display:inline-flex; gap:10px; align-items:center;
+    }
+    .ctaBig:hover{transform: translateY(-1px)}
+    .ctaBig:active{transform: translateY(0px) scale(.98)}
+
+    .ctaFill{
+      background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.80));
+      color: rgba(0,0,0,.86);
+      box-shadow: 0 18px 40px rgba(0,0,0,.22);
+    }
+    .ctaGlow{
+      background: linear-gradient(135deg,
+        color-mix(in oklab, var(--c1) 92%, white 0%),
+        color-mix(in oklab, var(--c2) 92%, white 0%),
+        color-mix(in oklab, var(--c3) 92%, white 0%));
+      color: rgba(0,0,0,.88);
+      box-shadow: 0 20px 55px rgba(0,0,0,.28);
+    }
+    .ctaOutline{
+      background: rgba(0,0,0,.16);
+      color: var(--bannerText);
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(10px);
+    }
+
+    /* RIGHT PANEL */
+    .panel{
+      border-radius: 22px;
+      background: rgba(0,0,0,.20);
+      border: 1px solid rgba(255,255,255,.16);
+      backdrop-filter: blur(12px);
+      padding: 16px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      min-height: 100%;
+    }
+    .panelTop{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+    }
+    .panel h3{
+      margin:0;
+      font-size: 14px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.80);
+    }
+    .readout{
+      font-size:12px;
+      color: rgba(255,255,255,.72);
+      line-height:1.4;
+      text-align:right;
+      white-space:nowrap;
+    }
+
+    .swatches{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+    }
+    .sw{
+      border-radius: 18px;
+      min-height: 76px;
+      border: 1px solid rgba(255,255,255,.16);
+      overflow:hidden;
+      position:relative;
+      box-shadow: 0 16px 30px rgba(0,0,0,.22);
+    }
+    .sw .label{
+      position:absolute; left:10px; bottom:10px;
+      font-size: 12px;
+      padding:6px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.30);
+      color: rgba(255,255,255,.92);
+      border:1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      letter-spacing:.03em;
+    }
+
+    .miniControls{
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+      margin-top: 6px;
+    }
+    .miniControls .btn{flex:1}
+    .mono{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size:12px;
+      color: rgba(255,255,255,.75);
+      padding: 12px 12px;
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 16px;
+      overflow:auto;
+      max-height: 150px;
+    }
+
+    /* EXTRA CONTENT */
+    .section{
+      margin-top: 18px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 900px){
+      .section{grid-template-columns:1fr}
+    }
+    .card{
+      border-radius: var(--radius);
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.14);
+      padding: 16px;
+      box-shadow: 0 20px 55px rgba(0,0,0,.25);
+      backdrop-filter: blur(12px);
+      position:relative;
+      overflow:hidden;
+    }
+    .card::before{
+      content:"";
+      position:absolute; inset:-40%;
+      background: radial-gradient(circle at 30% 30%, color-mix(in oklab, var(--c2) 45%, transparent), transparent 55%),
+                  radial-gradient(circle at 70% 60%, color-mix(in oklab, var(--c1) 40%, transparent), transparent 60%),
+                  radial-gradient(circle at 55% 75%, color-mix(in oklab, var(--c3) 38%, transparent), transparent 60%);
+      filter: blur(20px);
+      opacity:.55;
+      transform: rotate(9deg);
+    }
+    .card > *{position:relative}
+    .card h4{
+      margin:0 0 6px;
+      font-size: 18px;
+      letter-spacing:-.01em;
+      color: rgba(255,255,255,.92);
+    }
+    .card p{
+      margin:0 0 12px;
+      color: rgba(255,255,255,.72);
+      line-height:1.55;
+      font-size: 14px;
+    }
+
+    .meter{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    }
+    .bar{
+      flex:1;
+      min-width: 180px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.12);
+      overflow:hidden;
+    }
+    .bar > div{
+      height:100%;
+      width: 50%;
+      background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3));
+    }
+    .tag{
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color: rgba(255,255,255,.80);
+      backdrop-filter: blur(10px);
+    }
+
+    footer{
+      margin-top: 22px;
+      color: rgba(255,255,255,.55);
+      font-size: 12px;
+      display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between;
+      opacity:.9;
+    }
+    a{color: rgba(255,255,255,.78); text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    /* floating blobs */
+    .blob{
+      position:absolute;
+      width: 340px; height: 340px;
+      border-radius: 999px;
+      filter: blur(22px);
+      opacity: .28;
+      mix-blend-mode: soft-light;
+      animation: float 9s ease-in-out infinite;
+    }
+    .b1{left:-140px; top:-140px; background: var(--c1)}
+    .b2{right:-160px; top:40px; background: var(--c2); animation-delay: -3s}
+    .b3{left:35%; bottom:-180px; background: var(--c3); animation-delay: -6s}
+    @keyframes float{
+      0%,100%{transform: translate(0,0) scale(1)}
+      50%{transform: translate(18px,-22px) scale(1.06)}
+    }
+
+    /* toast */
+    .toast{
+      position:fixed; left:50%; bottom:18px;
+      transform: translateX(-50%) translateY(30px);
+      opacity:0;
+      pointer-events:none;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.16);
+      color: rgba(255,255,255,.86);
+      padding: 10px 12px;
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      transition: transform .2s ease, opacity .2s ease;
+    }
+    .toast.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="grain"></div>
+
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>Chromatic CTA Lab</h1>
+      </div>
+
+      <div class="topControls">
+        <div class="pill">
+          <span style="font-size:12px;color:rgba(255,255,255,.72);letter-spacing:.08em;text-transform:uppercase;">Mode</span>
+          <select id="mode">
+            <option value="triad">Triad</option>
+            <option value="analogous">Analogous</option>
+            <option value="complement">Complement</option>
+            <option value="neon">Neon</option>
+            <option value="pastel">Pastel</option>
+            <option value="sunset">Sunset</option>
+            <option value="ocean">Ocean</option>
+            <option value="random">Full Random</option>
+          </select>
+        </div>
+
+        <div class="pill">
+          <span style="font-size:12px;color:rgba(255,255,255,.72);letter-spacing:.08em;text-transform:uppercase;">Intensity</span>
+          <input id="intensity" type="range" min="20" max="95" value="78"/>
+        </div>
+
+        <button class="btn primary" id="randomize">✨ Randomize</button>
+        <button class="btn" id="lock">🔒 Lock</button>
+      </div>
+    </header>
+
+    <main class="hero" id="hero">
+      <div class="blob b1"></div>
+      <div class="blob b2"></div>
+      <div class="blob b3"></div>
+
+      <div class="heroGrid">
+        <div class="heroText">
+          <div class="kicker"><span class="dot"></span><span id="kickerText">BANNER COLOR AUTO-GEN TEST</span></div>
+          <h2 id="headline">Make your CTA impossible to ignore.</h2>
+          <p id="subhead">
+            Smash the randomizer to generate loud, aesthetic banners. Great for testing contrast, palette harmony,
+            and multi-color CTA states.
+          </p>
+
+          <div class="ctaRow">
+            <button class="ctaBig ctaGlow" id="ctaGlow">🔥 Primary CTA</button>
+            <button class="ctaBig ctaFill" id="ctaFill">⚡ Secondary CTA</button>
+            <button class="ctaBig ctaOutline" id="ctaOutline">👀 Ghost CTA</button>
+          </div>
+
+          <div class="miniControls">
+            <button class="btn" id="copyCss">📋 Copy CSS Vars</button>
+            <button class="btn" id="swap">🔁 Swap Colors</button>
+            <button class="btn" id="autoPulse">💓 Auto-Pulse</button>
+          </div>
+        </div>
+
+        <aside class="panel">
+          <div class="panelTop">
+            <h3>Palette</h3>
+            <div class="readout">
+              <div>Text: <span id="textPick">—</span></div>
+              <div>Contrast (approx): <span id="contrastScore">—</span></div>
+            </div>
+          </div>
+
+          <div class="swatches">
+            <div class="sw" id="sw1"><span class="label" id="l1">--c1</span></div>
+            <div class="sw" id="sw2"><span class="label" id="l2">--c2</span></div>
+            <div class="sw" id="sw3"><span class="label" id="l3">--c3</span></div>
+          </div>
+
+          <div class="mono" id="cssOut"></div>
+        </aside>
+      </div>
+    </main>
+
+    <section class="section">
+      <div class="card">
+        <h4>CTA Stress Test</h4>
+        <p>
+          This card uses blended glows from the banner colors. Try switching modes + intensity to see how readable UI
+          stays across extremes.
+        </p>
+        <div class="meter">
+          <div class="bar" title="Visual intensity">
+            <div id="intBar"></div>
+          </div>
+          <span class="tag" id="moodTag">Mood: Neon</span>
+          <span class="tag" id="ctaHint">CTA: Adaptive</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4>Banner Variations</h4>
+        <p>
+          The banner uses layered gradients and animated blobs, so your generator gets tested against both
+          flat and complex backgrounds.
+        </p>
+        <div class="meter">
+          <span class="tag" id="hex1">#—</span>
+          <span class="tag" id="hex2">#—</span>
+          <span class="tag" id="hex3">#—</span>
+          <span class="tag">Backdrop: Blur</span>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div>Tip: click any swatch to copy its hex.</div>
+      <div>
+        Deploy on Netlify by uploading this <span class="mono" style="padding:2px 6px;border-radius:10px;">index.html</span>.
+        <a href="https://www.netlify.com/" target="_blank" rel="noreferrer">Netlify</a>
+      </div>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast">Copied!</div>
+
+  <script>
+    // ---------- Utilities ----------
+    const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+    function hslToRgb(h, s, l){
+      // h [0..360), s/l [0..100]
+      h = (h % 360 + 360) % 360;
+      s /= 100; l /= 100;
+      const c = (1 - Math.abs(2*l - 1)) * s;
+      const x = c * (1 - Math.abs(((h/60) % 2) - 1));
+      const m = l - c/2;
+      let r=0,g=0,b=0;
+      if (0<=h && h<60) [r,g,b]=[c,x,0];
+      else if (60<=h && h<120) [r,g,b]=[x,c,0];
+      else if (120<=h && h<180) [r,g,b]=[0,c,x];
+      else if (180<=h && h<240) [r,g,b]=[0,x,c];
+      else if (240<=h && h<300) [r,g,b]=[x,0,c];
+      else [r,g,b]=[c,0,x];
+      return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+    }
+
+    function rgbToHex(r,g,b){
+      const to = (v)=> v.toString(16).padStart(2,'0');
+      return `#${to(r)}${to(g)}${to(b)}`.toUpperCase();
+    }
+
+    function hexToRgb(hex){
+      const m = hex.replace('#','').trim();
+      if (m.length !== 6) return [0,0,0];
+      return [parseInt(m.slice(0,2),16), parseInt(m.slice(2,4),16), parseInt(m.slice(4,6),16)];
+    }
+
+    // Relative luminance (sRGB)
+    function luminance(rgb){
+      const srgb = rgb.map(v => v/255).map(v => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4));
+      return 0.2126*srgb[0] + 0.7152*srgb[1] + 0.0722*srgb[2];
+    }
+
+    function contrastRatio(rgbA, rgbB){
+      const L1 = luminance(rgbA);
+      const L2 = luminance(rgbB);
+      const hi = Math.max(L1,L2);
+      const lo = Math.min(L1,L2);
+      return (hi + 0.05) / (lo + 0.05);
+    }
+
+    function pickTextColorForBanner(c1, c2, c3){
+      // Approx: average the colors, then pick white/black based on contrast
+      const a = hexToRgb(c1), b = hexToRgb(c2), c = hexToRgb(c3);
+      const avg = [
+        Math.round((a[0]+b[0]+c[0])/3),
+        Math.round((a[1]+b[1]+c[1])/3),
+        Math.round((a[2]+b[2]+c[2])/3),
+      ];
+      const white = [255,255,255];
+      const black = [0,0,0];
+      const cw = contrastRatio(avg, white);
+      const cb = contrastRatio(avg, black);
+
+      if (cw >= cb){
+        return { text: "rgba(255,255,255,.95)", sub:"rgba(255,255,255,.78)", choice:"White", score: cw };
+      } else {
+        return { text: "rgba(0,0,0,.88)", sub:"rgba(0,0,0,.65)", choice:"Black", score: cb };
+      }
+    }
+
+    function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+    function randFloat(a,b){ return Math.random()*(b-a)+a; }
+
+    function makeColorFromH(h, intensity){
+      // intensity ~ saturation; keep lightness somewhat punchy
+      const s = clamp(intensity, 18, 98);
+      const l = clamp(60 - (intensity-50)*0.22 + randFloat(-6, 6), 34, 72);
+      const [r,g,b] = hslToRgb(h, s, l);
+      return rgbToHex(r,g,b);
+    }
+
+    function genPalette(mode, intensity){
+      // returns [c1,c2,c3]
+      const base = randInt(0, 359);
+
+      const presets = {
+        sunset: [12, 28, 312],
+        ocean:  [195, 220, 160],
+        neon:   [310, 185, 55],
+        pastel: [330, 210, 90]
+      };
+
+      let hs;
+      if (mode in presets){
+        const [a,b,c] = presets[mode];
+        hs = [a + randInt(-8,8), b + randInt(-8,8), c + randInt(-8,8)];
+      } else if (mode === "triad"){
+        hs = [base, base+120, base+240];
+      } else if (mode === "analogous"){
+        hs = [base-20, base, base+20];
+      } else if (mode === "complement"){
+        hs = [base, base+180, base+150];
+      } else { // random
+        hs = [randInt(0,359), randInt(0,359), randInt(0,359)];
+      }
+
+      // tweak intensity by mode for “feel”
+      let i = intensity;
+      if (mode === "pastel") i = clamp(intensity-25, 20, 70);
+      if (mode === "neon") i = clamp(intensity+10, 55, 95);
+
+      const c1 = makeColorFromH(hs[0], i);
+      const c2 = makeColorFromH(hs[1], i);
+      const c3 = makeColorFromH(hs[2], i);
+
+      return [c1,c2,c3];
+    }
+
+    // ---------- DOM ----------
+    const $ = (id)=>document.getElementById(id);
+    const modeEl = $("mode");
+    const intensityEl = $("intensity");
+    const cssOut = $("cssOut");
+
+    const sw1 = $("sw1"), sw2 = $("sw2"), sw3 = $("sw3");
+    const hex1 = $("hex1"), hex2 = $("hex2"), hex3 = $("hex3");
+    const textPick = $("textPick");
+    const contrastScore = $("contrastScore");
+    const moodTag = $("moodTag");
+    const intBar = $("intBar");
+    const toast = $("toast");
+
+    let locked = false;
+    let pulseTimer = null;
+
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=>toast.classList.remove("show"), 900);
+    }
+
+    function applyPalette(c1,c2,c3){
+      const root = document.documentElement;
+      root.style.setProperty("--c1", c1);
+      root.style.setProperty("--c2", c2);
+      root.style.setProperty("--c3", c3);
+
+      // Update swatches
+      sw1.style.background = `linear-gradient(135deg, ${c1}, color-mix(in oklab, ${c1} 55%, white))`;
+      sw2.style.background = `linear-gradient(135deg, ${c2}, color-mix(in oklab, ${c2} 55%, white))`;
+      sw3.style.background = `linear-gradient(135deg, ${c3}, color-mix(in oklab, ${c3} 55%, white))`;
+
+      hex1.textContent = c1;
+      hex2.textContent = c2;
+      hex3.textContent = c3;
+
+      // Text choice & contrast
+      const pick = pickTextColorForBanner(c1,c2,c3);
+      root.style.setProperty("--bannerText", pick.text);
+      root.style.setProperty("--bannerSub", pick.sub);
+      textPick.textContent = pick.choice;
+      contrastScore.textContent = pick.score.toFixed(2) + " : 1";
+
+      // CSS output
+      cssOut.textContent =
+`/* Copy/paste */
+:root{
+  --c1: ${c1};
+  --c2: ${c2};
+  --c3: ${c3};
+  --bannerText: ${pick.text};
+  --bannerSub: ${pick.sub};
+}`;
+
+      // Visual intensity meter
+      const i = Number(intensityEl.value);
+      intBar.style.width = clamp(i,20,95) + "%";
+    }
+
+    function randomize(){
+      if (locked) return;
+      const mode = modeEl.value;
+      const intensity = Number(intensityEl.value);
+      const [c1,c2,c3] = genPalette(mode, intensity);
+      applyPalette(c1,c2,c3);
+      moodTag.textContent = "Mood: " + mode[0].toUpperCase() + mode.slice(1);
+    }
+
+    function copyText(text){
+      navigator.clipboard.writeText(text).then(()=>{
+        showToast("Copied!");
+      }).catch(()=>{
+        showToast("Copy failed (browser blocked).");
+      });
+    }
+
+    // ---------- Events ----------
+    $("randomize").addEventListener("click", randomize);
+
+    $("lock").addEventListener("click", (e)=>{
+      locked = !locked;
+      e.currentTarget.textContent = locked ? "🔓 Unlock" : "🔒 Lock";
+      showToast(locked ? "Locked palette" : "Unlocked palette");
+    });
+
+    modeEl.addEventListener("change", ()=>{
+      randomize();
+    });
+
+    intensityEl.addEventListener("input", ()=>{
+      randomize();
+    });
+
+    $("copyCss").addEventListener("click", ()=>{
+      copyText(cssOut.textContent);
+    });
+
+    $("swap").addEventListener("click", ()=>{
+      const styles = getComputedStyle(document.documentElement);
+      const c1 = styles.getPropertyValue("--c1").trim();
+      const c2 = styles.getPropertyValue("--c2").trim();
+      const c3 = styles.getPropertyValue("--c3").trim();
+      // rotate
+      applyPalette(c2, c3, c1);
+      showToast("Swapped!");
+    });
+
+    $("autoPulse").addEventListener("click", (e)=>{
+      const on = pulseTimer !== null;
+      if (on){
+        clearInterval(pulseTimer);
+        pulseTimer = null;
+        e.currentTarget.textContent = "💓 Auto-Pulse";
+        showToast("Auto-Pulse off");
+      } else {
+        pulseTimer = setInterval(randomize, 1400);
+        e.currentTarget.textContent = "💤 Stop Pulse";
+        showToast("Auto-Pulse on");
+      }
+    });
+
+    function bindSwatchCopy(el, idx){
+      el.addEventListener("click", ()=>{
+        const styles = getComputedStyle(document.documentElement);
+        const val = styles.getPropertyValue(`--c${idx}`).trim();
+        copyText(val);
+      });
+    }
+    bindSwatchCopy(sw1,1); bindSwatchCopy(sw2,2); bindSwatchCopy(sw3,3);
+
+    // CTA clicks (just for visual testing)
+    $("ctaGlow").addEventListener("click", ()=>showToast("Primary CTA clicked"));
+    $("ctaFill").addEventListener("click", ()=>showToast("Secondary CTA clicked"));
+    $("ctaOutline").addEventListener("click", ()=>showToast("Ghost CTA clicked"));
+
+    // ---------- Init ----------
+    randomize();
+  </script>
+</body>
+</html>
